@@ -1,0 +1,79 @@
+@page "/admin/login"
+@inject SimpleAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Admin Login</PageTitle>
+
+<div class="row justify-content-center py-5">
+    <div class="col-md-5">
+        <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="card-header bg-dark text-white text-center py-4 border-0">
+                <span class="fs-1 text-primary"><i class="bi bi-shield-lock-fill"></i></span>
+                <h3 class="fw-bold mt-2 mb-0">Admin Authentication</h3>
+                <p class="text-secondary mb-0 fs-7">Access your blogging dashboard</p>
+            </div>
+            
+            <div class="card-body p-4 bg-light">
+                @if (errorMessage != null)
+                {
+                    <div class="alert alert-danger py-2 mb-3 fs-7" role="alert">
+                        @errorMessage
+                    </div>
+                }
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-secondary">Username</label>
+                    <input type="text" class="form-control" placeholder="Enter 'admin'" @bind="username" @onkeyup="HandleKeyUp" />
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-semibold text-secondary">Password</label>
+                    <input type="password" class="form-control" placeholder="Enter 'password123'" @bind="password" @onkeyup="HandleKeyUp" />
+                </div>
+
+                <button class="btn btn-dark w-100 py-2.5 fw-bold rounded-3" @onclick="HandleLogin">
+                    Authenticate
+                </button>
+                
+                <div class="text-center mt-3 fs-7 text-muted">
+                    <p class="mb-0">Demo credentials: <strong>admin</strong> / <strong>password123</strong></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string username = string.Empty;
+    private string password = string.Empty;
+    private string? errorMessage;
+
+    private async Task HandleLogin()
+    {
+        errorMessage = null;
+
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+        {
+            errorMessage = "Please fill in all fields.";
+            return;
+        }
+
+        bool success = await AuthService.LoginAsync(username, password);
+        if (success)
+        {
+            Navigation.NavigateTo("admin/posts");
+        }
+        else
+        {
+            errorMessage = "Invalid username or password. Try 'admin' and 'password123'.";
+        }
+    }
+
+    private async Task HandleKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await HandleLogin();
+        }
+    }
+}

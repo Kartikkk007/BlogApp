@@ -1,0 +1,173 @@
+@page "/admin/posts"
+@inject BlogService BlogService
+@inject SimpleAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Admin Dashboard - Manage Posts</PageTitle>
+
+@if (!AuthService.IsAdminLoggedIn)
+{
+    <div class="alert alert-warning py-4 text-center rounded-4 border">
+        <h3 class="fw-bold">Access Denied</h3>
+        <p class="mb-3 text-muted">You must be logged in as an administrator to view this page.</p>
+        <a href="admin/login" class="btn btn-dark px-4">Go to Login</a>
+    </div>
+}
+else
+{
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+        <div>
+            <h1 class="h2 fw-bold text-dark mb-0">Manage Blog Posts</h1>
+            <p class="text-muted mb-0">Create, update, or remove articles from your blog.</p>
+        </div>
+        <a href="admin/edit" class="btn btn-primary d-inline-flex align-items-center gap-2 rounded-3 px-3 py-2">
+            <span class="fs-6">+</span> Write New Post
+        </a>
+    </div>
+
+    @if (loading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-dark" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">Loading posts...</p>
+        </div>
+    }
+    else if (!posts.Any())
+    {
+        <div class="text-center py-5 bg-light rounded-4 border border-dashed">
+            <h4 class="fw-bold text-secondary">No Posts Yet</h4>
+            <p class="text-muted mb-3">You haven't written any blog posts yet.</p>
+            <a href="admin/edit" class="btn btn-outline-dark">Write Your First Post</a>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive rounded-3 shadow-sm border bg-white">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th scope="col" class="py-3 ps-4">Title</th>
+                        <th scope="col" class="py-3">Category</th>
+                        <th scope="col" class="py-3">Created</th>
+                        <th scope="col" class="py-3">Status</th>
+                        <th scope="col" class="py-3 text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var post in posts)
+                    {
+                        <tr>
+                            <td class="ps-4 py-3 fw-bold text-dark">
+                                @post.Title
+                                <br />
+                                <small class="text-muted fw-normal">@post.Summary</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2.5 py-1.5 fw-semibold fs-7">
+                                    @post.Category
+                                </span>
+                            </td>
+                            <td class="text-secondary fs-7">
+                                @post.CreatedAt.ToString("MMM dd, yyyy")
+                            </td>
+                            <td>
+                                @if (post.IsPublished)
+                                {
+                                    <span class="badge bg-success-subtle text-success px-2.5 py-1.5 rounded-pill fs-7 fw-semibold border border-success">
+                                        Published
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning-subtle text-warning px-2.5 py-1.5 rounded-pill fs-7 fw-semibold border border-warning">
+                                        Draft
+                                    </span>
+                                }
+                            </td>
+                            <td class="text-end pe-4">
+                                <div class="btn-group gap-2">
+                                    <a href="post/@post.Id" class="btn btn-outline-secondary btn-sm rounded-2" target="_blank" title="View Post">
+                                        View
+                                    </a>
+                                    <a href="admin/edit/@post.Id" class="btn btn-outline-dark btn-sm rounded-2" title="Edit Post">
+                                        Edit
+                                    </a>
+                                    <button class="btn btn-outline-danger btn-sm rounded-2" @onclick="() => ConfirmDelete(post)" title="Delete Post">
+                                        Delete
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+
+<!-- Delete Confirmation Modal -->
+@if (postToDelete != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5)">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header bg-danger text-white py-3">
+                    <h5 class="modal-title fw-bold">Delete Blog Post?</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CancelDelete"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <p class="mb-1">Are you sure you want to delete the post:</p>
+                    <strong class="text-dark fs-5">@postToDelete.Title</strong>
+                    <p class="text-danger mt-3 mb-0 fs-7">This action cannot be undone. All comments will also be permanently deleted.</p>
+                </div>
+                <div class="modal-footer bg-light border-0 py-3">
+                    <button type="button" class="btn btn-secondary px-3" @onclick="CancelDelete">Cancel</button>
+                    <button type="button" class="btn btn-danger px-4" @onclick="HandleDelete">Delete Permanently</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<BlogPost> posts = new();
+    private bool loading = true;
+    private BlogPost? postToDelete;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthService.IsAdminLoggedIn)
+        {
+            await LoadPostsAsync();
+        }
+    }
+
+    private async Task LoadPostsAsync()
+    {
+        loading = true;
+        posts = await BlogService.GetAllPostsForAdminAsync();
+        loading = false;
+    }
+
+    private void ConfirmDelete(BlogPost post)
+    {
+        postToDelete = post;
+    }
+
+    private void CancelDelete()
+    {
+        postToDelete = null;
+    }
+
+    private async Task HandleDelete()
+    {
+        if (postToDelete != null)
+        {
+            await BlogService.DeletePostAsync(postToDelete.Id);
+            postToDelete = null;
+            await LoadPostsAsync();
+        }
+    }
+}

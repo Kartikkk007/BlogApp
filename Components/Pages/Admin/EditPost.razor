@@ -1,0 +1,137 @@
+@page "/admin/edit"
+@page "/admin/edit/{Id:int}"
+@inject BlogService BlogService
+@inject SimpleAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>@titleText</PageTitle>
+
+@if (!AuthService.IsAdminLoggedIn)
+{
+    <div class="alert alert-warning py-4 text-center rounded-4 border">
+        <h3 class="fw-bold">Access Denied</h3>
+        <p class="mb-3 text-muted">You must be logged in as an administrator to view this page.</p>
+        <a href="admin/login" class="btn btn-dark px-4">Go to Login</a>
+    </div>
+}
+else
+{
+    <div class="mb-4">
+        <a href="admin/posts" class="btn btn-link text-muted p-0 text-decoration-none mb-3">
+            <i class="bi bi-arrow-left"></i> Back to Dashboard
+        </a>
+        <h1 class="h2 fw-bold text-dark mb-1">@titleText</h1>
+        <p class="text-muted">Fill out the details below to publish or update your article.</p>
+    </div>
+
+    @if (loading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-dark" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">Loading article data...</p>
+        </div>
+    }
+    else
+    {
+        <div class="card border-0 shadow-sm rounded-4 p-4 bg-light">
+            <EditForm Model="post" OnValidSubmit="HandleValidSubmit" FormName="EditPostForm">
+                <DataAnnotationsValidator />
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-secondary">Title</label>
+                    <InputText class="form-control" placeholder="Enter post title" @bind-Value="post.Title" />
+                    <ValidationMessage For="() => post.Title" class="text-danger fs-7 mt-1" />
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold text-secondary">Category</label>
+                        <InputText class="form-control" placeholder="e.g. Tech, .NET, Life" @bind-Value="post.Category" />
+                        <ValidationMessage For="() => post.Category" class="text-danger fs-7 mt-1" />
+                    </div>
+                    <div class="col-md-6 mb-3 d-flex align-items-center">
+                        <div class="form-check form-switch mt-4">
+                            <InputCheckbox class="form-check-input darker-border-checkbox" id="isPublishedSwitch" @bind-Value="post.IsPublished" />
+                            <label class="form-check-label fw-semibold text-secondary ms-2" for="isPublishedSwitch">Publish Immediately</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-secondary">Summary</label>
+                    <InputTextArea class="form-control" rows="2" placeholder="Brief summary of the article (displays on the home feed)" @bind-Value="post.Summary" />
+                    <ValidationMessage For="() => post.Summary" class="text-danger fs-7 mt-1" />
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-semibold text-secondary">Content</label>
+                    <InputTextArea class="form-control" rows="12" placeholder="Write your post content here. You can use standard formatting. Double line breaks create new paragraphs." @bind-Value="post.Content" />
+                    <ValidationMessage For="() => post.Content" class="text-danger fs-7 mt-1" />
+                </div>
+
+                <div class="d-flex gap-3">
+                    <button type="submit" class="btn btn-primary px-4 py-2.5 rounded-3 fw-semibold">
+                        Save Article
+                    </button>
+                    <a href="admin/posts" class="btn btn-outline-secondary px-4 py-2.5 rounded-3">
+                        Cancel
+                    </a>
+                </div>
+            </EditForm>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public int? Id { get; set; }
+
+    private BlogPost post = new();
+    private bool loading = false;
+    private string titleText = "Write New Post";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AuthService.IsAdminLoggedIn) return;
+
+        if (Id.HasValue)
+        {
+            titleText = "Edit Blog Post";
+            loading = true;
+            var loadedPost = await BlogService.GetPostByIdAsync(Id.Value);
+            if (loadedPost != null)
+            {
+                post = loadedPost;
+            }
+            else
+            {
+                Navigation.NavigateTo("admin/posts");
+            }
+            loading = false;
+        }
+        else
+        {
+            titleText = "Write New Post";
+            post = new BlogPost
+            {
+                IsPublished = true,
+                Category = "General"
+            };
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (Id.HasValue)
+        {
+            await BlogService.UpdatePostAsync(post);
+        }
+        else
+        {
+            await BlogService.CreatePostAsync(post);
+        }
+
+        Navigation.NavigateTo("admin/posts");
+    }
+}

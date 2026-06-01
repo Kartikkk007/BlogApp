@@ -1,0 +1,160 @@
+@page "/post/{Id:int}"
+@inject BlogService BlogService
+@inject NavigationManager Navigation
+
+<PageTitle>@(post?.Title ?? "Loading Post...")</PageTitle>
+
+@if (loading)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-dark" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2 text-muted">Loading article...</p>
+    </div>
+}
+else if (post == null)
+{
+    <div class="text-center py-5">
+        <h2 class="fw-bold text-danger">Post Not Found</h2>
+        <p class="text-muted">The article you are looking for does not exist or has been removed.</p>
+        <a href="" class="btn btn-dark mt-3">Back to Home</a>
+    </div>
+}
+else
+{
+    <div class="mb-4">
+        <a href="" class="btn btn-link text-muted p-0 text-decoration-none mb-3">
+            <i class="bi bi-arrow-left"></i> Back to Feed
+        </a>
+        <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1 fw-semibold">
+                @post.Category
+            </span>
+            <span class="text-muted fs-7">•</span>
+            <small class="text-muted">Published on @post.CreatedAt.ToString("MMMM dd, yyyy")</small>
+        </div>
+        <h1 class="display-5 fw-bold text-dark mb-3">@post.Title</h1>
+        <p class="fs-5 text-muted italic-summary">@post.Summary</p>
+    </div>
+
+    <!-- Blog Content -->
+    <div class="article-content border-top border-bottom py-5 my-4">
+        @((MarkupString)FormatContent(post.Content))
+    </div>
+
+    <!-- Comments Section -->
+    <div class="mt-5">
+        <h3 class="fw-bold mb-4">Comments (@post.Comments.Count)</h3>
+
+        @if (!post.Comments.Any())
+        {
+            <p class="text-muted bg-light p-4 rounded-3 border">No comments yet. Be the first to leave a comment!</p>
+        }
+        else
+        {
+            <div class="d-flex flex-column gap-3 mb-5">
+                @foreach (var comment in post.Comments.OrderBy(c => c.CreatedAt))
+                {
+                    <div class="card border-0 shadow-sm rounded-3">
+                        <div class="card-body p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="fw-bold mb-0 text-dark">@comment.AuthorName</h6>
+                                <small class="text-muted">@comment.CreatedAt.ToString("MMM dd, yyyy, hh:mm tt")</small>
+                            </div>
+                            <p class="mb-0 text-secondary" style="white-space: pre-line;">@comment.Content</p>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        <!-- Add Comment Form -->
+        <div class="card border-0 shadow-sm rounded-4 p-4 mt-4 bg-light">
+            <h4 class="fw-bold mb-3 text-dark">Leave a Comment</h4>
+            <EditForm Model="newComment" OnValidSubmit="HandleSubmitComment" FormName="AddCommentForm">
+                <DataAnnotationsValidator />
+                
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-secondary">Your Name</label>
+                    <InputText class="form-control" placeholder="Enter your name" @bind-Value="newComment.AuthorName" />
+                    <ValidationMessage For="() => newComment.AuthorName" class="text-danger fs-7 mt-1" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-secondary">Comment</label>
+                    <InputTextArea class="form-control" rows="4" placeholder="Share your thoughts..." @bind-Value="newComment.Content" />
+                    <ValidationMessage For="() => newComment.Content" class="text-danger fs-7 mt-1" />
+                </div>
+
+                @if (submitSuccess)
+                {
+                    <div class="alert alert-success py-2 mb-3">Comment posted successfully!</div>
+                }
+
+                <button type="submit" class="btn btn-dark px-4 py-2">
+                    Submit Comment
+                </button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private BlogPost? post;
+    private Comment newComment = new();
+    private bool loading = true;
+    private bool submitSuccess = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPostAsync();
+    }
+
+    private async Task LoadPostAsync()
+    {
+        loading = true;
+        post = await BlogService.GetPostByIdAsync(Id, includeComments: true);
+        loading = false;
+    }
+
+    private async Task HandleSubmitComment()
+    {
+        if (post == null) return;
+
+        await BlogService.AddCommentAsync(post.Id, newComment);
+        newComment = new Comment(); // reset form
+        submitSuccess = true;
+        
+        await LoadPostAsync(); // reload comments
+
+        // clear alert after 3 seconds
+        _ = Task.Delay(3000).ContinueWith(_ => 
+        {
+            submitSuccess = false;
+            InvokeAsync(StateHasChanged);
+        });
+    }
+
+    private string FormatContent(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content)) return string.Empty;
+
+        // Basic clean HTML encoder/renderer for safe display.
+        // We also support converting markdown-like double line breaks into paragraphs
+        // and support simple bullet points for professional readability.
+        var html = System.Net.WebUtility.HtmlEncode(content)
+            .Replace("\r\n", "\n")
+            .Replace("\n\n", "</p><p>")
+            .Replace("\n", "<br />");
+
+        // Convert simple markdown headings
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"### (.*?)(&lt;br /&gt;|<br />|</p>)", "<h3>$1</h3>$2");
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"#### (.*?)(&lt;br /&gt;|<br />|</p>)", "<h4>$1</h4>$2");
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"- (.*?)(&lt;br /&gt;|<br />|<br>)","<li>$1</li>");
+
+        return $"<p>{html}</p>";
+    }
+}

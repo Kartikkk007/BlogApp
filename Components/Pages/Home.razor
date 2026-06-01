@@ -1,0 +1,151 @@
+@page "/"
+@inject BlogService BlogService
+
+<PageTitle> YouBlog - Home</PageTitle>
+
+<div class="row align-items-center mb-5">
+    <div class="col-lg-8">
+        <h1 class="display-4 fw-extrabold text-dark mb-2">Welcome to YouBlog</h1>
+        <p class="lead text-muted">A clean space for sharing ideas, thoughts, and technical tutorials.</p>
+    </div>
+</div>
+
+<!-- Filters and Search Bar -->
+<div class="row g-3 align-items-center mb-5 pb-3 border-bottom">
+    <div class="col-md-6 col-lg-7">
+        <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-sm @(string.IsNullOrEmpty(selectedCategory) ? "btn-dark" : "btn-outline-secondary") rounded-pill px-3 py-1.5"
+                    @onclick="() => FilterByCategory(null)">
+                All Categories
+            </button>
+            @foreach (var category in categories)
+            {
+                <button class="btn btn-sm @(selectedCategory == category ? "btn-dark" : "btn-outline-secondary") rounded-pill px-3 py-1.5"
+                        @onclick="() => FilterByCategory(category)">
+                    @category
+                </button>
+            }
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-5">
+        <div class="input-group">
+            <span class="input-group-text bg-white border-end-0 text-muted">
+                <i class="bi bi-search"></i>
+            </span>
+            <input type="text" class="form-control border-start-0 ps-0" placeholder="Search posts..." 
+                   @bind="SearchQuery" @bind:event="oninput" @onkeyup="HandleKeyUp" />
+            @if (!string.IsNullOrEmpty(SearchQuery))
+            {
+                <button class="btn btn-outline-secondary border-start-0" @onclick="ClearSearch">Clear</button>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Blog Feed -->
+@if (loading)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-dark" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2 text-muted">Loading posts...</p>
+    </div>
+}
+else if (!posts.Any())
+{
+    <div class="text-center py-5 bg-light rounded-4 border border-dashed">
+        <h3 class="fw-bold text-secondary mb-2">No Posts Found</h3>
+        <p class="text-muted mb-0">We couldn't find any published posts matching your criteria.</p>
+    </div>
+}
+else
+{
+    <div class="row g-4">
+        @foreach (var post in posts)
+        {
+            <div class="col-md-6 col-lg-6">
+                <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden blog-card">
+                    <div class="card-body p-4 d-flex flex-column">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1.5 fw-semibold fs-7">
+                                @post.Category
+                            </span>
+                            <small class="text-muted">
+                                @post.CreatedAt.ToString("MMM dd, yyyy")
+                            </small>
+                        </div>
+                        <h3 class="card-title h4 fw-bold mb-3">
+                            <a href="post/@post.Id" class="text-decoration-none text-dark card-title-link">
+                                @post.Title
+                            </a>
+                        </h3>
+                        <p class="card-text text-muted mb-4 flex-grow-1">
+                            @post.Summary
+                        </p>
+                        <div class="mt-auto">
+                            <a href="post/@post.Id" class="btn btn-link text-primary fw-semibold p-0 text-decoration-none d-inline-flex align-items-center">
+                                Read Full Article <i class="bi bi-arrow-right ms-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<BlogPost> posts = new();
+    private List<string> categories = new();
+    private string? selectedCategory;
+    private string searchQuery = string.Empty;
+    private bool loading = true;
+
+    private string SearchQuery
+    {
+        get => searchQuery;
+        set
+        {
+            if (searchQuery != value)
+            {
+                searchQuery = value;
+                _ = LoadPostsAsync(); // Async trigger for dynamic instant search experience
+            }
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        categories = await BlogService.GetCategoriesAsync();
+        await LoadPostsAsync();
+    }
+
+    private async Task LoadPostsAsync()
+    {
+        loading = true;
+        posts = await BlogService.GetPublishedPostsAsync(selectedCategory, searchQuery);
+        loading = false;
+        StateHasChanged();
+    }
+
+    private async Task FilterByCategory(string? category)
+    {
+        selectedCategory = category;
+        await LoadPostsAsync();
+    }
+
+    private async Task ClearSearch()
+    {
+        searchQuery = string.Empty;
+        await LoadPostsAsync();
+    }
+
+    private async Task HandleKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await LoadPostsAsync();
+        }
+    }
+}
