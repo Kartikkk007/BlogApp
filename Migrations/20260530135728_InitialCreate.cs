@@ -69,7 +69,7 @@ namespace BlogApp.Migrations
                 column: "BlogPostId");
         }
 
-      
+        /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
