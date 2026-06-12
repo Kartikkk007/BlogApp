@@ -1,28 +1,19 @@
 @page "/admin/edit"
 @page "/admin/edit/{Id:int}"
 @inject BlogService BlogService
-@inject SimpleAuthService AuthService
 @inject NavigationManager Navigation
 
 <PageTitle>@titleText</PageTitle>
 
-@if (!AuthService.IsAdminLoggedIn)
-{
-    <div class="alert alert-warning py-4 text-center rounded-4 border">
-        <h3 class="fw-bold">Access Denied</h3>
-        <p class="mb-3 text-muted">You must be logged in as an administrator to view this page.</p>
-        <a href="admin/login" class="btn btn-dark px-4">Go to Login</a>
-    </div>
-}
-else
-{
-    <div class="mb-4">
-        <a href="admin/posts" class="btn btn-link text-muted p-0 text-decoration-none mb-3">
-            <i class="bi bi-arrow-left"></i> Back to Dashboard
-        </a>
-        <h1 class="h2 fw-bold text-dark mb-1">@titleText</h1>
-        <p class="text-muted">Fill out the details below to publish or update your article.</p>
-    </div>
+<AuthorizeView Context="authContext">
+    <Authorized>
+        <div class="mb-4">
+            <a href="admin/posts" class="btn btn-link text-muted p-0 text-decoration-none mb-3">
+                <i class="bi bi-arrow-left"></i> Back to Dashboard
+            </a>
+            <h1 class="h2 fw-bold text-dark mb-1">@titleText</h1>
+            <p class="text-muted">Fill out the details below to publish or update your article.</p>
+        </div>
 
     @if (loading)
     {
@@ -82,10 +73,19 @@ else
             </EditForm>
         </div>
     }
-}
+    </Authorized>
+    <NotAuthorized>
+        <div class="alert alert-warning py-4 text-center rounded-4 border">
+            <h3 class="fw-bold">Access Denied</h3>
+            <p class="mb-3 text-muted">You must be logged in as an administrator to view this page.</p>
+            <a href="admin/login" class="btn btn-dark px-4">Go to Login</a>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
 
 @code {
     [Parameter] public int? Id { get; set; }
+    [CascadingParameter] private Task<AuthenticationState> authenticationStateTask { get; set; } = null!;
 
     private BlogPost post = new();
     private bool loading = false;
@@ -93,7 +93,12 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        if (!AuthService.IsAdminLoggedIn) return;
+        var authState = await authenticationStateTask;
+        var user = authState.User;
+        if (user.Identity is not { IsAuthenticated: true })
+        {
+            return;
+        }
 
         if (Id.HasValue)
         {

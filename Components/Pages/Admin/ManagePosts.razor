@@ -1,21 +1,12 @@
 @page "/admin/posts"
 @inject BlogService BlogService
-@inject SimpleAuthService AuthService
 @inject NavigationManager Navigation
 
 <PageTitle>Admin Dashboard - Manage Posts</PageTitle>
 
-@if (!AuthService.IsAdminLoggedIn)
-{
-    <div class="alert alert-warning py-4 text-center rounded-4 border">
-        <h3 class="fw-bold">Access Denied</h3>
-        <p class="mb-3 text-muted">You must be logged in as an administrator to view this page.</p>
-        <a href="admin/login" class="btn btn-dark px-4">Go to Login</a>
-    </div>
-}
-else
-{
-    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+<AuthorizeView Context="authContext">
+    <Authorized>
+        <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
         <div>
             <h1 class="h2 fw-bold text-dark mb-0">Manage Blog Posts</h1>
            
@@ -105,7 +96,15 @@ else
             </table>
         </div>
     }
-}
+    </Authorized>
+    <NotAuthorized>
+        <div class="alert alert-warning py-4 text-center rounded-4 border">
+            <h3 class="fw-bold">Access Denied</h3>
+            <p class="mb-3 text-muted">You must be logged in as an administrator to view this page.</p>
+            <a href="admin/login" class="btn btn-dark px-4">Go to Login</a>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
 
 <!-- Delete Confirmation Modal -->
 @if (postToDelete != null)
@@ -135,10 +134,13 @@ else
     private List<BlogPost> posts = new();
     private bool loading = true;
     private BlogPost? postToDelete;
+    [CascadingParameter] private Task<AuthenticationState> authenticationStateTask { get; set; } = null!;
 
     protected override async Task OnInitializedAsync()
     {
-        if (AuthService.IsAdminLoggedIn)
+        var authState = await authenticationStateTask;
+        var user = authState.User;
+        if (user.Identity is { IsAuthenticated: true })
         {
             await LoadPostsAsync();
         }

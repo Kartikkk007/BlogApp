@@ -95,7 +95,7 @@ namespace BlogApp.Services
             var post = await context.BlogPosts.FindAsync(id);
             if (post == null) return false;
 
-            context.BlogPosts.Remove(post);
+            post.IsDeleted = true;
             await context.SaveChangesAsync();
             return true;
         }

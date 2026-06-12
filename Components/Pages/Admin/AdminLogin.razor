@@ -1,42 +1,44 @@
 @page "/admin/login"
-@inject SimpleAuthService AuthService
+@inject BlogApp.Services.SimpleAuthService AuthService
+@inject BlogApp.Services.JwtAuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
 
 <PageTitle>Admin Login</PageTitle>
 
-<div class="row justify-content-center py-5">
-    <div class="col-md-5">
-        <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
-            <div class="card-header bg-dark text-white text-center py-4 border-0">
-                <span class="fs-1 text-primary"><i class="bi bi-shield-lock-fill"></i></span>
-                <h3 class="fw-bold mt-2 mb-0">Admin Authentication</h3>
-              
-            </div>
-            
-            <div class="card-body p-4 bg-light">
-                @if (errorMessage != null)
-                {
-                    <div class="alert alert-danger py-2 mb-3 fs-7" role="alert">
-                        @errorMessage
-                    </div>
-                }
-
-                <div class="mb-3">
-                    <label class="form-label fw-semibold text-secondary">Username</label>
-                    <input type="text" class="form-control" placeholder="Enter 'admin'" @bind="username" @onkeyup="HandleKeyUp" />
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-4">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white text-center">
+                    <h4>Blog Admin Login</h4>
                 </div>
+                <div class="card-body">
+                    <EditForm Model="@loginModel" OnValidSubmit="HandleLogin" FormName="adminLoginForm">
+                        <DataAnnotationsValidator />
+                        
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <InputText id="username" @bind-Value="loginModel.Username" class="form-control" />
+                            <ValidationMessage For="@(() => loginModel.Username)" class="text-danger" />
+                        </div>
 
-                <div class="mb-4">
-                    <label class="form-label fw-semibold text-secondary">Password</label>
-                    <input type="password" class="form-control" placeholder="Enter 'password123'" @bind="password" @onkeyup="HandleKeyUp" />
-                </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <InputText id="password" type="password" @bind-Value="loginModel.Password" class="form-control" />
+                            <ValidationMessage For="@(() => loginModel.Password)" class="text-danger" />
+                        </div>
 
-                <button class="btn btn-dark w-100 py-2.5 fw-bold rounded-3" @onclick="HandleLogin">
-                    Authenticate
-                </button>
-                
-                <div class="text-center mt-3 fs-7 text-muted">
-                    <p class="mb-0"> </p>
+                        <button type="submit" class="btn btn-primary w-100 mt-2">
+                            Login
+                        </button>
+                    </EditForm>
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger mt-3 text-center" role="alert">
+                            @errorMessage
+                        </div>
+                    }
                 </div>
             </div>
         </div>
@@ -44,36 +46,37 @@
 </div>
 
 @code {
-    private string username = string.Empty;
-    private string password = string.Empty;
+    private LoginModel loginModel = new();
     private string? errorMessage;
 
     private async Task HandleLogin()
     {
         errorMessage = null;
 
-        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
-        {
-            errorMessage = "Please fill in all fields.";
-            return;
-        }
+        // Try logging in using the username and password
+        // This will return the JWT token string if successful, or null if unauthorized
+        var token = await AuthService.LoginAsync(loginModel.Username, loginModel.Password);
 
-        bool success = await AuthService.LoginAsync(username, password);
-        if (success)
+        if (token != null)
         {
-            Navigation.NavigateTo("admin/posts");
+            // Update the Blazor Authentication State with the generated JWT
+            AuthStateProvider.MarkUserAsAuthenticated(token);
+            
+            // Redirect to the post management dashboard
+            Navigation.NavigateTo("/admin/posts");
         }
         else
         {
-            errorMessage = "Invalid username or password. Try 'admin' and 'password123'.";
+            errorMessage = "Invalid username or password.";
         }
     }
 
-    private async Task HandleKeyUp(KeyboardEventArgs e)
+    public class LoginModel
     {
-        if (e.Key == "Enter")
-        {
-            await HandleLogin();
-        }
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Username is required.")]
+        public string Username { get; set; } = "";
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Password is required.")]
+        public string Password { get; set; } = "";
     }
 }

@@ -17,7 +17,8 @@ namespace BlogApp.Data
         {
             base.OnModelCreating(modelBuilder);
 
-         
+            // Apply soft delete query filter globally
+            modelBuilder.Entity<BlogPost>().HasQueryFilter(p => !p.IsDeleted);
             modelBuilder.Entity<BlogPost>()
                 .HasMany(b => b.Comments)
                 .WithOne(c => c.BlogPost)

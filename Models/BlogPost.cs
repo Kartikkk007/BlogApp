@@ -8,6 +8,8 @@ namespace BlogApp.Models
     {
         public int Id { get; set; }
 
+        public bool IsDeleted { get; set; } = false; // Default is not deleted
+
         [Required(ErrorMessage = "Title is required")]
         [StringLength(150, ErrorMessage = "Title cannot exceed 150 characters")]
         public string Title { get; set; } = string.Empty;

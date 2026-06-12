@@ -1,78 +1,44 @@
 @inherits LayoutComponentBase
-@inject SimpleAuthService AuthService
+@inject BlogApp.Services.SimpleAuthService AuthService
 @inject NavigationManager Navigation
+@* Inject your JWT provider to handle manual logout calls *@
+@inject BlogApp.Services.JwtAuthenticationStateProvider AuthStateProvider 
 
-<div class="app-container">
-    <header class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm border-bottom border-secondary">
-        <div class="container py-2">
-            <a class="navbar-brand d-flex align-items-center fw-bold text-white fs-4" href="">
-                <span class="brand-dot me-2"></span> YouBlog
-            </a>
-            
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            
-            <div class="collapse navbar-collapse justify-content-between" id="navbarNav">
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
-                    <li class="nav-item">
-                        <NavLink class="nav-link px-3 text-light-hover" href="" Match="NavLinkMatch.All">
-                            Home
-                        </NavLink>
-                    </li>
-                </ul>
-
-                <div class="d-flex align-items-center gap-3">
-                    @if (AuthService.IsAdminLoggedIn)
-                    {
-                        <span class="badge bg-success-subtle text-success px-3 py-2 border border-success">
-                            Admin Mode
-                        </span>
-                        <NavLink class="btn btn-outline-light btn-sm px-3" href="admin/posts">
-                            Dashboard
-                        </NavLink>
-                        <button class="btn btn-danger btn-sm px-3" @onclick="HandleLogout">
-                            Logout
-                        </button>
-                    }
-                    else
-                    {
-                        <NavLink class="btn btn-outline-light btn-sm px-3" href="admin/login">
-                            Admin Login
-                        </NavLink>
-                    }
-                </div>
-            </div>
+<div class="page">
+    <main>
+        <div class="top-row px-4 text-end">
+            @* Wrap the login/logout navigation layout inside an AuthorizeView *@
+            <AuthorizeView>
+                <Authorized>
+                    <span class="me-3 text-muted">Hello, Admin!</span>
+                    <button class="btn btn-link text-danger p-0 m-0 align-baseline" @onclick="Logout">
+                        Logout
+                    </button>
+                </Authorized>
+                <NotAuthorized>
+                    <a href="/admin/login">Admin Login</a>
+                </NotAuthorized>
+            </AuthorizeView>
+            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
         </div>
-    </header>
 
-    <main class="flex-grow-1 bg-light py-5">
-        <div class="container">
-            <article class="content-body">
-                @Body
-            </article>
-        </div>
+        <article class="content px-4">
+            @Body
+        </article>
     </main>
-
-  
 </div>
 
-<div id="blazor-error-ui" data-nosnippet>
+<div id="blazor-error-ui" data-webassembly-simulate="error">
     An unhandled error has occurred.
     <a href="." class="reload">Reload</a>
-    <span class="dismiss">🗙</span>
+    <a href="." class="dismiss">🗙</a>
 </div>
 
 @code {
-    protected override void OnInitialized()
+    private void Logout()
     {
-        // Subscribe to navigation to re-render and check auth state
-        Navigation.LocationChanged += (s, e) => StateHasChanged();
-    }
-
-    private async Task HandleLogout()
-    {
-        await AuthService.LogoutAsync();
-        Navigation.NavigateTo("");
+        // Use your custom JWT auth state provider to wipe the token identities
+        AuthStateProvider.MarkUserAsLoggedOut();
+        Navigation.NavigateTo("/");
     }
 }
