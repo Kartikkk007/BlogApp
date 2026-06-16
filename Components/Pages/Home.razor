@@ -66,6 +66,12 @@ else
         {
             <div class="col-md-6 col-lg-6">
                 <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden blog-card">
+                    @if (!string.IsNullOrEmpty(post.ImageUrl))
+                    {
+                        <a href="post/@post.Id">
+                            <img src="@post.ImageUrl" class="card-img-top object-fit-cover" style="height: 200px;" alt="@post.Title" />
+                        </a>
+                    }
                     <div class="card-body p-4 d-flex flex-column">
                         <div class="d-flex align-items-center justify-content-between mb-3">
                             <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1.5 fw-semibold fs-7">

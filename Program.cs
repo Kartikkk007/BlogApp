@@ -2,10 +2,10 @@ using BlogApp.Components;
 using Microsoft.EntityFrameworkCore;
 using BlogApp.Data;
 using BlogApp.Services;
-using Microsoft.AspNetCore.Components.Authorization; // Add this
-using Microsoft.AspNetCore.Authentication.JwtBearer; // Add this
-using Microsoft.IdentityModel.Tokens;                 // Add this
-using System.Text;                                   // Add this
+using Microsoft.AspNetCore.Components.Authorization; 
+using Microsoft.AspNetCore.Authentication.JwtBearer; 
+using Microsoft.IdentityModel.Tokens;                 
+using System.Text;                                   
 
 var builder = WebApplication.CreateBuilder(args);
 

@@ -36,6 +36,12 @@ else
         </div>
         <h1 class="display-5 fw-bold text-dark mb-3">@post.Title</h1>
         <p class="fs-5 text-muted italic-summary">@post.Summary</p>
+        @if (!string.IsNullOrEmpty(post.ImageUrl))
+        {
+            <div class="my-4 text-center rounded-4 overflow-hidden shadow-sm" style="max-height: 400px;">
+                <img src="@post.ImageUrl" class="img-fluid w-100 object-fit-cover" style="max-height: 400px;" alt="@post.Title" />
+            </div>
+        }
     </div>
 
     <!-- Blog Content -->

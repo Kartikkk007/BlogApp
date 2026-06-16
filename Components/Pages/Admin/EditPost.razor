@@ -1,7 +1,9 @@
 @page "/admin/edit"
 @page "/admin/edit/{Id:int}"
+@using Microsoft.AspNetCore.Hosting
 @inject BlogService BlogService
 @inject NavigationManager Navigation
+@inject IWebHostEnvironment WebHostEnvironment
 
 <PageTitle>@titleText</PageTitle>
 
@@ -51,6 +53,24 @@
                 </div>
 
                 <div class="mb-3">
+                    <label class="form-label fw-semibold text-secondary">Post Cover Image (Optional)</label>
+                    <InputFile OnChange="OnInputFileChange" class="form-control" accept=".jpg,.jpeg,.png,.gif" />
+                    @if (!string.IsNullOrEmpty(post.ImageUrl))
+                    {
+                        <div class="mt-2 position-relative d-inline-block">
+                            <img src="@post.ImageUrl" class="img-thumbnail" style="max-height: 150px; border-radius: 8px;" alt="Post cover preview" />
+                            <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 m-1" @onclick="RemoveImage" title="Remove image" style="border-radius: 50%;">
+                                &times;
+                            </button>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(uploadError))
+                    {
+                        <div class="text-danger fs-7 mt-1">@uploadError</div>
+                    }
+                </div>
+
+                <div class="mb-3">
                     <label class="form-label fw-semibold text-secondary">Summary</label>
                     <InputTextArea class="form-control" rows="2" placeholder="Brief summary of the article (displays on the home feed)" @bind-Value="post.Summary" />
                     <ValidationMessage For="() => post.Summary" class="text-danger fs-7 mt-1" />
@@ -90,6 +110,56 @@
     private BlogPost post = new();
     private bool loading = false;
     private string titleText = "Write New Post";
+    private string? uploadError;
+    private long maxFileSize = 1024 * 1024 * 5; // 5MB limit
+
+    private async Task OnInputFileChange(InputFileChangeEventArgs e)
+    {
+        uploadError = null;
+        try
+        {
+            var file = e.File;
+            if (file != null)
+            {
+                if (file.Size > maxFileSize)
+                {
+                    uploadError = "File size exceeds 5MB limit.";
+                    return;
+                }
+
+                var ext = System.IO.Path.GetExtension(file.Name).ToLower();
+                if (ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".gif")
+                {
+                    uploadError = "Only JPG, PNG, or GIF files are allowed.";
+                    return;
+                }
+
+                var folderPath = System.IO.Path.Combine(WebHostEnvironment.WebRootPath, "images");
+                if (!System.IO.Directory.Exists(folderPath))
+                {
+                    System.IO.Directory.CreateDirectory(folderPath);
+                }
+
+                var uniqueFileName = $"{Guid.NewGuid()}{ext}";
+                var physicalPath = System.IO.Path.Combine(folderPath, uniqueFileName);
+
+                using var stream = file.OpenReadStream(maxFileSize);
+                using var fileStream = new System.IO.FileStream(physicalPath, System.IO.FileMode.Create);
+                await stream.CopyToAsync(fileStream);
+
+                post.ImageUrl = $"/images/{uniqueFileName}";
+            }
+        }
+        catch (Exception ex)
+        {
+            uploadError = $"Error uploading file: {ex.Message}";
+        }
+    }
+
+    private void RemoveImage()
+    {
+        post.ImageUrl = null;
+    }
 
     protected override async Task OnInitializedAsync()
     {
